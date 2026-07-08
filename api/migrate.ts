@@ -51,9 +51,9 @@ export async function runMigrations() {
 
       await client.query(`
         INSERT INTO settings (key, value) VALUES
-          ('whatsapp_enabled', 'false'),
-          ('whatsapp_phone', ''),
-          ('whatsapp_api_key', '')
+          ('email_enabled', 'false'),
+          ('email_address', ''),
+          ('email_api_key', '')
         ON CONFLICT (key) DO NOTHING
       `);
 
