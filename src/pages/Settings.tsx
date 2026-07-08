@@ -1,3 +1,7 @@
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^s@]+\.[^s@]+$/.test(email);
+}
+
 import { Mail, Users, Settings as SettingsIcon, Plus, X, ArrowLeft } from 'lucide-react';
 import { getDb } from "../api/queries/connection";
 import { emotions, settings } from "./schema";
