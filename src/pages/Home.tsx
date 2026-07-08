@@ -331,7 +331,7 @@ export default function Home() {
                     fontSize: 24,
                     color: '#0B193D',
                     cursor: 'pointer',
-                    opacity: 0,
+                    opacity: 1,
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.borderColor = '#0B193D';
