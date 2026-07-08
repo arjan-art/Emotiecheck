@@ -3,7 +3,7 @@ import { createRouter, publicQuery } from "../middleware";
 import { getDb } from "../queries/connection";
 import { settings } from "@db/schema";
 import { eq } from "drizzle-orm";
-import { sendWhatsAppMessage } from "../lib/whatsapp";
+import { sendTestEmail } from "../lib/email";
 
 // Helper to get a setting value by key
 export async function getSetting(
@@ -32,25 +32,24 @@ export const whatsappRouter = createRouter({
   sendTest: publicQuery
     .input(z.object({ phoneNumber: z.string() }))
     .mutation(async ({ input }) => {
-      const apiKey = await getSetting("whatsapp_api_key");
-      const result = await sendWhatsAppMessage(
-        input.phoneNumber,
-        "🧪 Dit is een testbericht van EmotieCheck dagbesteding.",
-        apiKey ?? undefined,
-      );
+      const emailApiKey = await getSetting("email_api_key");
+      if (!emailApiKey) {
+        return { success: false, message: "Geen email API key geconfigureerd." };
+      }
+      const result = await sendTestEmail(input.phoneNumber, emailApiKey);
       return result;
     }),
 
   getConfig: publicQuery.query(async () => {
-    const [phoneNumber, apiKey, enabled] = await Promise.all([
-      getSetting("whatsapp_phone"),
-      getSetting("whatsapp_api_key"),
-      getSetting("whatsapp_enabled"),
+    const [emailAddress, emailApiKey, enabled] = await Promise.all([
+      getSetting("email_address"),
+      getSetting("email_api_key"),
+      getSetting("email_enabled"),
     ]);
 
     return {
-      phoneNumber: phoneNumber ?? "",
-      apiKey: apiKey ?? "",
+      phoneNumber: emailAddress ?? "",
+      apiKey: emailApiKey ?? "",
       enabled: enabled === "true",
     };
   }),
@@ -65,13 +64,13 @@ export const whatsappRouter = createRouter({
     )
     .mutation(async ({ input }) => {
       if (input.phoneNumber !== undefined) {
-        await setSetting("whatsapp_phone", input.phoneNumber);
+        await setSetting("email_address", input.phoneNumber);
       }
       if (input.apiKey !== undefined) {
-        await setSetting("whatsapp_api_key", input.apiKey);
+        await setSetting("email_api_key", input.apiKey);
       }
       if (input.enabled !== undefined) {
-        await setSetting("whatsapp_enabled", String(input.enabled));
+        await setSetting("email_enabled", String(input.enabled));
       }
 
       return { success: true };
