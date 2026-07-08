@@ -3,7 +3,7 @@ import { createRouter, publicQuery } from "../middleware";
 import { getDb } from "../queries/connection";
 import { emotions } from "@db/schema";
 import { eq, and, gte, desc } from "drizzle-orm";
-import { sendWhatsAppMessage, buildRedAlertMessage } from "../lib/whatsapp";
+import { sendEmailNotification } from "../lib/email";
 import { getSetting } from "./whatsapp";
 
 export const emotionRouter = createRouter({
@@ -32,22 +32,23 @@ export const emotionRouter = createRouter({
         throw new Error("Failed to insert emotion record");
       }
 
-      // If "rood", trigger WhatsApp notification
+      // If "rood", trigger email notification
       if (input.emotion === "rood") {
         try {
-          const phoneNumber = await getSetting("whatsapp_phone");
-          const apiKey = await getSetting("whatsapp_api_key");
-          const enabled = await getSetting("whatsapp_enabled");
+          const emailAddress = await getSetting("email_address");
+          const emailApiKey = await getSetting("email_api_key");
+          const enabled = await getSetting("email_enabled");
 
-          if (phoneNumber && enabled === "true") {
-            const message = buildRedAlertMessage(
+          if (emailAddress && emailApiKey && enabled === "true") {
+            await sendEmailNotification(
+              emailAddress,
+              input.participantName || "Een deelnemer",
               record.createdAt,
-              input.participantName,
+              emailApiKey,
             );
-            await sendWhatsAppMessage(phoneNumber, message, apiKey ?? undefined);
           }
         } catch {
-          // Silently fail WhatsApp notification — don't block the emotion registration
+          // Silently fail email notification — don't block the emotion registration
         }
       }
 
