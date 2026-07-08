@@ -5,7 +5,6 @@ import { settings } from "@db/schema";
 import { eq } from "drizzle-orm";
 import { sendTestEmail } from "../lib/email";
 
-// Helper to get a setting value by key
 export async function getSetting(
   key: string,
 ): Promise<string | null> {
@@ -16,7 +15,6 @@ export async function getSetting(
   return record?.value ?? null;
 }
 
-// Helper to set a setting value
 async function setSetting(key: string, value: string): Promise<void> {
   const db = getDb();
   await db
