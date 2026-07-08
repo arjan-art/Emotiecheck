@@ -26,9 +26,9 @@ async function seed() {
 
   // Insert default settings
   await db.insert(settings).values([
-    { key: "whatsapp_enabled", value: "false" },
-    { key: "whatsapp_phone", value: "" },
-    { key: "whatsapp_api_key", value: "" },
+    { key: "email_enabled", value: "false" },
+    { key: "email_address", value: "" },
+    { key: "email_api_key", value: "" },
   ]).onConflictDoUpdate({
     target: settings.key,
     set: { value: "false" },
