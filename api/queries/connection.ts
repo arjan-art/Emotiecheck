@@ -5,14 +5,11 @@ import * as relations from "@db/relations";
 
 const fullSchema = { ...schema, ...relations };
 
-// Use file-based database for persistence, or :memory: for ephemeral
-const DB_PATH = process.env.DATABASE_URL?.replace("postgresql://", "") || "./data/emotiecheck.db";
-
 let instance: ReturnType<typeof drizzle<typeof fullSchema>>;
 
 export function getDb() {
   if (!instance) {
-    const client = new PGlite(DB_PATH);
+    const client = new PGlite(":memory:");
     instance = drizzle(client, { schema: fullSchema });
   }
   return instance;
