@@ -1,6 +1,6 @@
 import { PGlite } from "@electric-sql/pglite";
 
-const DB_PATH = process.env.DATABASE_URL?.replace("postgresql://", "") || "./data/emotiecheck.db";
+const DB_PATH = "/tmp/emotiecheck.db";
 
 export async function runMigrations() {
   console.log("[DB] Running migrations...");
