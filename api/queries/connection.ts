@@ -1,5 +1,5 @@
-import { PGlite } from "@electric-sql/pglite";
-import { drizzle } from "drizzle-orm/pglite";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 import * as schema from "@db/schema";
 import * as relations from "@db/relations";
 
@@ -9,8 +9,8 @@ let instance: ReturnType<typeof drizzle<typeof fullSchema>>;
 
 export function getDb() {
   if (!instance) {
-    const client = new PGlite(":memory:");
-    instance = drizzle(client, { schema: fullSchema });
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    instance = drizzle(pool, { schema: fullSchema });
   }
   return instance;
 }
