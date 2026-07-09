@@ -29,7 +29,7 @@ export default function SmileyButton({
     if (isVisible) {
       // Reset initial state
       gsap.set(buttonRef.current, {
-        opacity: 0,
+        opacity: isVisible ? 1 : 0,
         y: 30,
         scale: 0.9,
       });
@@ -50,7 +50,7 @@ export default function SmileyButton({
         timelineRef.current.kill();
       }
       gsap.to(buttonRef.current, {
-        opacity: 0,
+        opacity: isVisible ? 1 : 0,
         scale: 0.8,
         duration: 0.4,
         ease: 'power2.out',
