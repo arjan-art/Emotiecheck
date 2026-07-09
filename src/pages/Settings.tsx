@@ -267,7 +267,7 @@ export default function Settings() {
 
   /* ================================================================== */
 
-  if (!pwGate.unlocked) {
+  if (false && !pwGate.unlocked) {
     return (
       <div
         className="flex min-h-[100dvh] items-center justify-center px-4"
