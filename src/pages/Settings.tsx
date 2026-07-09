@@ -8,11 +8,42 @@ import {
   Plus,
   X,
   ArrowLeft,
+  Lock,
 } from 'lucide-react';
 import { trpc } from '@/providers/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+
+/* ------------------------------------------------------------------ */
+/*  Password Gate                                                      */
+/* ------------------------------------------------------------------ */
+
+const STAFF_PASSWORD = 'emotie2024';
+
+function usePasswordGate() {
+  const [unlocked, setUnlocked] = useState(false);
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const saved = localStorage.getItem('emotiecheck_auth');
+    if (saved === 'true') setUnlocked(true);
+  }, []);
+
+  const checkPassword = (pw: string) => {
+    if (pw === STAFF_PASSWORD) {
+      localStorage.setItem('emotiecheck_auth', 'true');
+      setUnlocked(true);
+      setError('');
+    } else {
+      setError('Onjuist wachtwoord. Toegang geweigerd.');
+    }
+  };
+
+  return { unlocked, password, setPassword, error, checkPassword };
+}
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -21,10 +52,11 @@ import { Switch } from '@/components/ui/switch';
 interface Participant {
   id: number;
   name: string;
+  activeToday: boolean;
 }
 
 /* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
+/*  Validation helpers                                                 */
 /* ------------------------------------------------------------------ */
 
 function isValidEmail(email: string): boolean {
@@ -38,23 +70,26 @@ function isValidEmail(email: string): boolean {
 function AnimatedCard({
   delay,
   children,
+  className,
 }: {
   delay: number;
   children: React.ReactNode;
+  className?: string;
 }) {
-  const [visible, setVisible] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const t = setTimeout(() => setVisible(true), delay);
-    return () => clearTimeout(t);
-  }, [delay]);
+    const timer = setTimeout(() => setMounted(true), 50);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <div
+      className={className}
       style={{
-        opacity: visible ? 1 : 0,
-        transform: visible ? 'translateY(0)' : 'translateY(20px)',
-        transition: 'opacity 600ms cubic-bezier(0.4,0,0.2,1), transform 600ms cubic-bezier(0.4,0,0.2,1)',
+        opacity: mounted ? 1 : 0,
+        transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+        transition: `opacity 600ms cubic-bezier(0.4, 0, 0.2, 1) ${delay}ms, transform 600ms cubic-bezier(0.4, 0, 0.2, 1) ${delay}ms`,
       }}
     >
       {children}
@@ -63,32 +98,18 @@ function AnimatedCard({
 }
 
 /* ------------------------------------------------------------------ */
-/*  Input styles                                                       */
+/*  Main Settings Page                                                 */
 /* ------------------------------------------------------------------ */
 
-const inputBaseStyle = {
-  background: 'rgba(255,255,255,0.06)',
-  border: '1px solid rgba(255,255,255,0.12)',
-  borderRadius: 12,
-  color: '#FFFFFF',
-  fontSize: 14,
-};
-
-const inputErrorStyle = {
-  ...inputBaseStyle,
-  border: '1px solid #E74C3C',
-};
-
-/* ================================================================== */
-/*  PAGE                                                               */
-/* ================================================================== */
-
-export default function SettingsPage() {
+export default function Settings() {
   const navigate = useNavigate();
   const utils = trpc.useUtils();
+  const pwGate = usePasswordGate();
 
-  /* ---- API ---- */
+  /* ---- tRPC hooks ---- */
   const configQuery = trpc.whatsapp.getConfig.useQuery();
+  const emotionsQuery = trpc.emotion.listToday.useQuery();
+
   const updateConfig = trpc.whatsapp.updateConfig.useMutation({
     onSuccess: () => {
       utils.whatsapp.getConfig.invalidate();
@@ -98,124 +119,269 @@ export default function SettingsPage() {
       toast.error('Er is iets misgegaan. Probeer opnieuw.');
     },
   });
+
   const sendTest = trpc.whatsapp.sendTest.useMutation({
     onSuccess: (data) => {
-      if (data.success) toast.success('Test email verstuurd!');
-      else toast.error(data.message);
+      if (data.success) {
+        toast.success('Testbericht verstuurd!');
+      } else {
+        toast.error(data.message ?? 'Testbericht kon niet worden verstuurd.');
+      }
+    },
+    onError: () => {
+      toast.error('Er is iets misgegaan. Probeer opnieuw.');
     },
   });
 
   /* ---- Local state ---- */
-  const [email, setEmail] = useState('');
-  const [emailError, setEmailError] = useState('');
-  const [apiKey, setApiKey] = useState('');
-  const [enabled, setEnabled] = useState(false);
-
+  const [phone, setPhone] = useState('');
+  const [phoneError, setPhoneError] = useState('');
+  const [template, setTemplate] = useState('');
   const [participants, setParticipants] = useState<Participant[]>([
-    { id: 1, name: 'Deelnemer 1' },
-    { id: 2, name: 'Deelnemer 2' },
-    { id: 3, name: 'Deelnemer 3' },
+    { id: 1, name: 'Deelnemer 1', activeToday: true },
+    { id: 2, name: 'Deelnemer 2', activeToday: false },
+    { id: 3, name: 'Deelnemer 3', activeToday: true },
   ]);
-  const [newName, setNewName] = useState('');
+  const [newParticipantName, setNewParticipantName] = useState('');
+  const [participantError, setParticipantError] = useState('');
+  const [autoResetSeconds, setAutoResetSeconds] = useState(30);
+  const [soundEnabled, setSoundEnabled] = useState(true);
 
-  /* ---- Load from API ---- */
+  /* ---- Sync from query ---- */
   useEffect(() => {
-    if (configQuery.data) {
-      setEmail(configQuery.data.phoneNumber);
-      setApiKey(configQuery.data.apiKey);
-      setEnabled(configQuery.data.enabled);
+    if (configQuery.data?.phoneNumber) {
+      setPhone(configQuery.data.phoneNumber);
     }
-  }, [configQuery.data]);
+  }, [configQuery.data?.phoneNumber]);
 
-  /* ---- Validation ---- */
-  const handleEmailChange = (value: string) => {
-    setEmail(value);
-    if (emailError) setEmailError('');
+  /* ---- Phone validation ---- */
+  const handlePhoneChange = (value: string) => {
+    setPhone(value);
+    if (phoneError) setPhoneError('');
   };
 
-  const handleEmailBlur = () => {
-    if (email && !isValidEmail(email)) {
-      setEmailError('Voer een geldig emailadres in.');
+  const handlePhoneBlur = () => {
+    if (phone && !isValidEmail(phone)) {
+      setPhoneError('Voer een geldig emailadres in.');
     } else {
-      setEmailError('');
+      setPhoneError('');
     }
   };
 
-  /* ---- Actions ---- */
-  const handleSave = () => {
-    if (email && !isValidEmail(email)) {
-      setEmailError('Voer een geldig emailadres in.');
+  /* ---- Save handler ---- */
+  const handleSave = useCallback(() => {
+    if (phone && !isValidEmail(phone)) {
+      setPhoneError('Voer een geldig emailadres in.');
+      toast.error('Controleer het telefoonnummer.');
       return;
     }
     updateConfig.mutate({
-      phoneNumber: email,
-      apiKey: apiKey,
-      enabled: enabled,
+      phoneNumber: phone || undefined,
     });
-  };
+  }, [phone, updateConfig]);
 
-  const handleTest = () => {
-    if (!email) {
-      toast.error('Vul eerst een emailadres in.');
+  /* ---- Test message ---- */
+  const handleTest = useCallback(() => {
+    if (!phone) {
+      toast.error('Voer eerst een telefoonnummer in.');
       return;
     }
-    if (!isValidEmail(email)) {
-      setEmailError('Voer een geldig emailadres in.');
+    if (!isValidEmail(phone)) {
+      setPhoneError('Voer een geldig emailadres in.');
+      toast.error('Controleer het telefoonnummer.');
       return;
     }
-    sendTest.mutate({ phoneNumber: email });
-  };
+    sendTest.mutate({ phoneNumber: phone });
+  }, [phone, sendTest]);
 
+  /* ---- Participant handlers ---- */
   const handleAddParticipant = () => {
-    if (!newName.trim()) return;
+    const name = newParticipantName.trim();
+    if (!name) {
+      setParticipantError('Voer een naam in.');
+      return;
+    }
+    setParticipantError('');
+    const newId =
+      participants.length > 0
+        ? Math.max(...participants.map((p) => p.id)) + 1
+        : 1;
     setParticipants((prev) => [
       ...prev,
-      { id: Date.now(), name: newName.trim() },
+      { id: newId, name, activeToday: false },
     ]);
-    setNewName('');
+    setNewParticipantName('');
     toast.success('Deelnemer toegevoegd');
   };
 
-  const handleRemoveParticipant = (id: number) => {
+  const handleDeleteParticipant = (id: number) => {
     setParticipants((prev) => prev.filter((p) => p.id !== id));
     toast.success('Deelnemer verwijderd');
   };
 
-  /* ---- Render ---- */
+  const handleKeyDownAdd = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddParticipant();
+    }
+  };
+
+  /* ---- Auto-reset handler ---- */
+  const handleAutoResetChange = (value: string) => {
+    const num = parseInt(value, 10);
+    if (isNaN(num)) {
+      setAutoResetSeconds(30);
+      return;
+    }
+    const clamped = Math.min(300, Math.max(10, num));
+    setAutoResetSeconds(clamped);
+  };
+
+  /* ---- Determine active participants from emotion data ---- */
+  const activeParticipantIds = new Set<number>();
+  if (emotionsQuery.data?.emotions) {
+    emotionsQuery.data.emotions.forEach((e: { deviceId: string | null }) => {
+      const match = e.deviceId?.match(/deelnemer-(\d+)/i);
+      if (match) activeParticipantIds.add(parseInt(match[1], 10));
+    });
+  }
+
+  /* ---- Derived state ---- */
+  const isSaving = updateConfig.isPending;
+  const isTesting = sendTest.isPending;
+
+  /* ---- Input base styles ---- */
+  const inputBaseStyle: React.CSSProperties = {
+    background: 'rgba(255,255,255,0.06)',
+    border: '1px solid rgba(255,255,255,0.12)',
+    borderRadius: 12,
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: "'Inter', sans-serif",
+  };
+
+  const inputErrorStyle: React.CSSProperties = {
+    ...inputBaseStyle,
+    border: '1px solid #E74C3C',
+  };
+
+  /* ================================================================== */
+
+  if (!pwGate.unlocked) {
+    return (
+      <div
+        className="flex min-h-[100dvh] items-center justify-center px-4"
+        style={{ background: '#0B193D', fontFamily: 'Inter, sans-serif' }}
+      >
+        <div
+          className="w-full max-w-sm rounded-2xl p-8"
+          style={{
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.08)',
+          }}
+        >
+          <div className="mb-6 flex justify-center">
+            <div
+              className="flex h-16 w-16 items-center justify-center rounded-full"
+              style={{ background: 'rgba(231,76,60,0.1)' }}
+            >
+              <Lock size={28} color="#E74C3C" />
+            </div>
+          </div>
+          <h2
+            className="mb-2 text-center font-poppins font-bold"
+            style={{ fontSize: 24, color: '#FFFFFF' }}
+          >
+            Beveiligd
+          </h2>
+          <p
+            className="mb-6 text-center font-inter"
+            style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}
+          >
+            Voer het wachtwoord in om toegang te krijgen.
+          </p>
+          <Input
+            type="password"
+            placeholder="Wachtwoord"
+            value={pwGate.password}
+            onChange={(e) => {
+              pwGate.setPassword(e.target.value);
+              if (pwGate.error) pwGate.setError('');
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') pwGate.checkPassword(pwGate.password);
+            }}
+            className="mb-3 w-full"
+            style={{
+              background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: 12,
+              color: '#FFFFFF',
+              padding: '14px 16px',
+            }}
+          />
+          {pwGate.error && (
+            <p className="mb-3 font-inter" style={{ fontSize: 13, color: '#E74C3C' }}>
+              {pwGate.error}
+            </p>
+          )}
+          <Button
+            onClick={() => pwGate.checkPassword(pwGate.password)}
+            className="w-full rounded-full font-inter font-medium"
+            style={{
+              background: '#27AE60',
+              color: '#FFFFFF',
+              padding: '14px',
+            }}
+          >
+            Toegang aanvragen
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
-      className="min-h-screen"
-      style={{ background: '#0B193D', fontFamily: 'Inter, sans-serif' }}
+      className="font-inter min-h-[100dvh] w-full overflow-y-auto"
+      style={{ background: '#0B193D' }}
     >
       <Toaster
-        position="top-center"
+        position="bottom-right"
         toastOptions={{
           style: {
-            background: '#1a1a2e',
-            color: '#fff',
+            background: 'rgba(11,25,61,0.95)',
             border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 12,
+            color: '#FFFFFF',
+            fontFamily: "'Inter', sans-serif",
+            fontSize: 14,
           },
         }}
       />
 
       {/* ---- Navigation Bar ---- */}
       <nav
-        className="flex items-center justify-between px-6"
+        className="sticky top-0 z-50 flex items-center justify-between px-6"
         style={{
           height: 64,
+          background: '#0B193D',
           borderBottom: '1px solid rgba(255,255,255,0.08)',
         }}
       >
-        <div className="flex flex-col">
+        <div className="flex items-center gap-2">
           <span
             className="font-poppins font-semibold"
-            style={{ fontSize: 20, color: '#FFFFFF' }}
+            style={{ fontSize: 18, color: '#FFFFFF' }}
           >
             EmotieCheck
           </span>
           <span
-            className="font-inter"
-            style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}
+            style={{
+              fontSize: 13,
+              color: 'rgba(255,255,255,0.3)',
+              fontFamily: "'Inter', sans-serif",
+            }}
           >
             Dagbesteding
           </span>
@@ -223,31 +389,56 @@ export default function SettingsPage() {
         <div className="flex items-center gap-6">
           <button
             onClick={() => navigate('/dashboard')}
-            className="font-inter transition-colors duration-200 hover:text-white"
-            style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}
+            className="font-inter transition-colors duration-200 hover:text-white focus:outline-none"
+            style={{
+              fontSize: 14,
+              fontWeight: 500,
+              color: 'rgba(255,255,255,0.4)',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+            }}
           >
             Dashboard
           </button>
           <span
             className="font-inter"
-            style={{ fontSize: 14, color: '#FFFFFF' }}
+            style={{
+              fontSize: 14,
+              fontWeight: 500,
+              color: '#FFFFFF',
+            }}
           >
             Instellingen
           </span>
         </div>
       </nav>
 
-      {/* ---- Content ---- */}
-      <main className="mx-auto px-6 py-10" style={{ maxWidth: 800 }}>
-        {/* Header */}
-        <div className="mb-10 flex items-center gap-3">
-          <SettingsIcon size={28} color="#27AE60" />
+      {/* ---- Main Content ---- */}
+      <div className="mx-auto px-6 pb-12" style={{ maxWidth: 800 }}>
+        {/* Page header */}
+        <div className="pt-10 pb-8">
           <h1
-            className="font-poppins font-bold"
-            style={{ fontSize: 32, color: '#FFFFFF' }}
+            className="font-poppins font-semibold"
+            style={{
+              fontSize: 'clamp(28px, 4vw, 40px)',
+              color: '#FFFFFF',
+              lineHeight: 1.1,
+              letterSpacing: '-0.01em',
+            }}
           >
             Instellingen
           </h1>
+          <p
+            className="mt-2 font-inter"
+            style={{
+              fontSize: 16,
+              color: 'rgba(255,255,255,0.5)',
+              lineHeight: 1.6,
+            }}
+          >
+            Configureer het EmotieCheck-systeem
+          </p>
         </div>
 
         {/* ---- Section 1: Email Notifications ---- */}
@@ -348,22 +539,22 @@ export default function SettingsPage() {
                 <Input
                   type="email"
                   placeholder="naam@deterugwinning.nl"
-                  value={email}
-                  onChange={(e) => handleEmailChange(e.target.value)}
-                  onBlur={handleEmailBlur}
+                  value={phone}
+                  onChange={(e) => handlePhoneChange(e.target.value)}
+                  onBlur={handlePhoneBlur}
                   className="w-full"
                   style={{
-                    ...(emailError ? inputErrorStyle : inputBaseStyle),
+                    ...(phoneError ? inputErrorStyle : inputBaseStyle),
                     padding: '16px 16px 16px 44px',
                   }}
                 />
               </div>
-              {emailError && (
+              {phoneError && (
                 <p
                   className="mt-2 font-inter"
                   style={{ fontSize: 13, color: '#E74C3C' }}
                 >
-                  {emailError}
+                  {phoneError}
                 </p>
               )}
             </div>
@@ -398,233 +589,373 @@ export default function SettingsPage() {
                   lineHeight: 1.4,
                 }}
               >
-                Begint met re_. Gratis tot 3.000 emails/maand.
+                Gebruuk {'{tijd}'} om de tijd van de melding in te voegen.
               </p>
             </div>
 
-            {/* Enable toggle */}
-            <div className="mb-6 flex items-center justify-between">
-              <span
-                className="font-inter font-medium"
-                style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)' }}
-              >
-                Meldingen inschakelen
-              </span>
-              <Switch
-                checked={enabled}
-                onCheckedChange={setEnabled}
-              />
-            </div>
-
-            {/* Action buttons */}
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
+            {/* Action Buttons */}
+            <div className="flex flex-wrap items-center gap-4">
+              <button
                 onClick={handleTest}
-                className="rounded-full border-green-600 text-green-400 hover:bg-green-900/20"
-                style={{ padding: '12px 24px' }}
+                disabled={isTesting}
+                className="font-inter font-medium transition-all duration-200 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                style={{
+                  fontSize: 14,
+                  color: 'rgba(255,255,255,0.7)',
+                  background: 'transparent',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: 9999,
+                  padding: '12px 24px',
+                  cursor: 'pointer',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = '#27AE60';
+                  e.currentTarget.style.color = '#27AE60';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+                  e.currentTarget.style.color = 'rgba(255,255,255,0.7)';
+                }}
               >
-                Testemail versturen
-              </Button>
+                {isTesting ? 'Versturen...' : 'Testbericht versturen'}
+              </button>
+
               <Button
                 onClick={handleSave}
-                className="rounded-full bg-green-600 text-white hover:bg-green-700"
-                style={{ padding: '12px 24px' }}
+                disabled={isSaving}
+                className="font-inter font-semibold"
+                style={{
+                  fontSize: 14,
+                  background: '#E6EDE8',
+                  color: '#0B193D',
+                  borderRadius: 9999,
+                  padding: '12px 32px',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.background =
+                    '#FFFFFF';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.background =
+                    '#E6EDE8';
+                }}
               >
-                Opslaan
+                {isSaving ? 'Opslaan...' : 'Opslaan'}
               </Button>
             </div>
           </div>
         </AnimatedCard>
 
         {/* ---- Section 2: Participant Management ---- */}
-        <AnimatedCard delay={350}>
-          <div
-            className="mt-6"
-            style={{
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: 16,
-              padding: 32,
-            }}
-          >
-            {/* Card Header */}
-            <div className="flex items-center gap-3">
-              <Users size={24} color="#F39C12" />
+        <div className="mt-6">
+          <AnimatedCard delay={350}>
+            <div
+              style={{
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 16,
+                padding: 32,
+              }}
+            >
+              {/* Card Header */}
+              <div className="flex items-center gap-3">
+                <Users size={24} color="#F39C12" />
+                <div>
+                  <h2
+                    className="font-poppins font-semibold"
+                    style={{ fontSize: 24, color: '#FFFFFF' }}
+                  >
+                    Deelnemers
+                  </h2>
+                  <p
+                    className="mt-1 font-inter"
+                    style={{
+                      fontSize: 14,
+                      color: 'rgba(255,255,255,0.5)',
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    Beheer de deelnemers van de dagbesteding.
+                  </p>
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div
+                className="my-6 w-full"
+                style={{
+                  height: 1,
+                  background: 'rgba(255,255,255,0.08)',
+                }}
+              />
+
+              {/* Participant List */}
               <div>
-                <h2
-                  className="font-poppins font-semibold"
-                  style={{ fontSize: 24, color: '#FFFFFF' }}
+                {participants.map((participant) => {
+                  const isActive =
+                    participant.activeToday ||
+                    activeParticipantIds.has(participant.id);
+                  return (
+                    <div
+                      key={participant.id}
+                      className="flex items-center justify-between"
+                      style={{
+                        padding: '14px 0',
+                        borderBottom: '1px solid rgba(255,255,255,0.06)',
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          style={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: '50%',
+                            background: isActive
+                              ? '#27AE60'
+                              : 'rgba(255,255,255,0.2)',
+                            flexShrink: 0,
+                          }}
+                        />
+                        <span
+                          className="font-inter"
+                          style={{
+                            fontSize: 16,
+                            color: '#FFFFFF',
+                          }}
+                        >
+                          {participant.name}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() =>
+                          handleDeleteParticipant(participant.id)
+                        }
+                        className="transition-colors duration-200 focus:outline-none"
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: 'rgba(255,255,255,0.3)',
+                          padding: 4,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = '#E74C3C';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color =
+                            'rgba(255,255,255,0.3)';
+                        }}
+                        aria-label={`Verwijder ${participant.name}`}
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Add Participant */}
+              <div
+                className="flex items-center gap-3"
+                style={{ marginTop: 16 }}
+              >
+                <Input
+                  type="text"
+                  placeholder="Naam deelnemer"
+                  value={newParticipantName}
+                  onChange={(e) => {
+                    setNewParticipantName(e.target.value);
+                    if (participantError) setParticipantError('');
+                  }}
+                  onKeyDown={handleKeyDownAdd}
+                  className="flex-1"
+                  style={
+                    participantError
+                      ? {
+                          ...inputErrorStyle,
+                          padding: '14px 16px',
+                        }
+                      : {
+                          ...inputBaseStyle,
+                          padding: '14px 16px',
+                        }
+                  }
+                />
+                <button
+                  onClick={handleAddParticipant}
+                  className="flex shrink-0 items-center justify-center transition-colors duration-200 focus:outline-none"
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 9999,
+                    background: '#27AE60',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    cursor: 'pointer',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#219a52';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = '#27AE60';
+                  }}
+                  aria-label="Deelnemer toevoegen"
                 >
-                  Deelnemers
-                </h2>
+                  <Plus size={20} />
+                </button>
+              </div>
+              {participantError && (
                 <p
-                  className="mt-1 font-inter"
+                  className="mt-2 font-inter"
+                  style={{ fontSize: 13, color: '#E74C3C' }}
+                >
+                  {participantError}
+                </p>
+              )}
+            </div>
+          </AnimatedCard>
+        </div>
+
+        {/* ---- Section 3: System Settings ---- */}
+        <div className="mt-6">
+          <AnimatedCard delay={500}>
+            <div
+              style={{
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 16,
+                padding: 32,
+              }}
+            >
+              {/* Card Header */}
+              <div className="flex items-center gap-3">
+                <SettingsIcon size={24} color="#29445A" />
+                <div>
+                  <h2
+                    className="font-poppins font-semibold"
+                    style={{ fontSize: 24, color: '#FFFFFF' }}
+                  >
+                    Systeem
+                  </h2>
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div
+                className="my-6 w-full"
+                style={{
+                  height: 1,
+                  background: 'rgba(255,255,255,0.08)',
+                }}
+              />
+
+              {/* Auto-Reset Timer */}
+              <div className="mb-6">
+                <label
+                  className="mb-1 block font-inter font-medium"
                   style={{
                     fontSize: 14,
-                    color: 'rgba(255,255,255,0.5)',
+                    color: 'rgba(255,255,255,0.7)',
+                  }}
+                >
+                  Auto-reset timer
+                </label>
+                <p
+                  className="mb-3 font-inter"
+                  style={{
+                    fontSize: 13,
+                    color: 'rgba(255,255,255,0.4)',
                     lineHeight: 1.4,
                   }}
                 >
-                  Beheer de namen die op het startscherm verschijnen.
+                  Tijd voordat het scherm terugkeert naar de check-in.
                 </p>
-              </div>
-            </div>
-
-            {/* Divider */}
-            <div
-              className="my-6 w-full"
-              style={{
-                height: 1,
-                background: 'rgba(255,255,255,0.08)',
-              }}
-            />
-
-            {/* Participant list */}
-            <div className="space-y-3">
-              {participants.map((p) => (
-                <div
-                  key={p.id}
-                  className="flex items-center justify-between rounded-lg px-4 py-3"
-                  style={{
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.06)',
-                  }}
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="h-2 w-2 rounded-full"
-                      style={{ background: '#27AE60' }}
-                    />
-                    <span
-                      className="font-inter"
-                      style={{ fontSize: 15, color: '#FFFFFF' }}
-                    >
-                      {p.name}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => handleRemoveParticipant(p.id)}
-                    className="rounded p-1 transition-colors duration-200 hover:bg-red-500/20"
+                <div className="flex items-center gap-3">
+                  <Input
+                    type="number"
+                    min={10}
+                    max={300}
+                    value={autoResetSeconds}
+                    onChange={(e) => handleAutoResetChange(e.target.value)}
+                    className="w-[120px]"
+                    style={{
+                      ...inputBaseStyle,
+                      padding: '14px 16px',
+                    }}
+                  />
+                  <span
+                    className="font-inter"
+                    style={{
+                      fontSize: 14,
+                      color: 'rgba(255,255,255,0.5)',
+                    }}
                   >
-                    <X size={16} color="#E74C3C" />
-                  </button>
+                    seconden
+                  </span>
                 </div>
-              ))}
-            </div>
-
-            {/* Add new */}
-            <div className="mt-4 flex gap-2">
-              <Input
-                placeholder="Nieuwe deelnemer..."
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleAddParticipant();
-                }}
-                className="flex-1"
-                style={{
-                  ...inputBaseStyle,
-                  padding: '12px 16px',
-                }}
-              />
-              <Button
-                onClick={handleAddParticipant}
-                className="rounded-full bg-green-600 text-white hover:bg-green-700"
-                style={{ padding: '12px 20px' }}
-              >
-                <Plus size={18} />
-              </Button>
-            </div>
-          </div>
-        </AnimatedCard>
-
-        {/* ---- Section 3: System Info ---- */}
-        <AnimatedCard delay={500}>
-          <div
-            className="mt-6"
-            style={{
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: 16,
-              padding: 32,
-            }}
-          >
-            <div className="flex items-center gap-3">
-              <SettingsIcon size={24} color="rgba(255,255,255,0.5)" />
-              <h2
-                className="font-poppins font-semibold"
-                style={{ fontSize: 24, color: '#FFFFFF' }}
-              >
-                Systeem
-              </h2>
-            </div>
-
-            <div
-              className="my-6 w-full"
-              style={{
-                height: 1,
-                background: 'rgba(255,255,255,0.08)',
-              }}
-            />
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span
-                  className="font-inter"
-                  style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)' }}
-                >
-                  Versie
-                </span>
-                <span
-                  className="font-inter"
-                  style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}
-                >
-                  1.0.0
-                </span>
               </div>
-              <div className="flex items-center justify-between">
-                <span
-                  className="font-inter"
-                  style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)' }}
-                >
-                  Laatste sync
-                </span>
-                <span
-                  className="font-inter"
-                  style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}
-                >
-                  zojuist
-                </span>
+
+              {/* Sound Toggle */}
+              <div
+                className="flex items-center justify-between"
+                style={{ padding: '16px 0' }}
+              >
+                <div>
+                  <label
+                    className="block font-inter font-medium"
+                    style={{
+                      fontSize: 14,
+                      color: 'rgba(255,255,255,0.7)',
+                    }}
+                  >
+                    Geluid bij melding
+                  </label>
+                  <p
+                    className="mt-1 font-inter"
+                    style={{
+                      fontSize: 13,
+                      color: 'rgba(255,255,255,0.4)',
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    Speel een geluid af bij een nieuwe registratie.
+                  </p>
+                </div>
+                <Switch
+                  checked={soundEnabled}
+                  onCheckedChange={setSoundEnabled}
+                  className="shrink-0"
+                  style={{
+                    // Custom track styling via CSS
+                    // The shadcn Switch uses data-state for checked
+                  }}
+                />
               </div>
             </div>
-          </div>
-        </AnimatedCard>
+          </AnimatedCard>
+        </div>
 
-        {/* ---- Footer ---- */}
+        {/* ---- Footer spacer ---- */}
+        <div className="mt-10 pb-8 text-center font-inter" style={{ fontSize: 12, color: 'rgba(255,255,255,0.2)' }}>
+          Beveiligde toegang
+        </div>
+
+        {/* Footer text */}
         <div
-          className="mt-10 flex items-center justify-between"
+          className="pb-8 text-center font-inter"
           style={{
-            borderTop: '1px solid rgba(255,255,255,0.06)',
-            paddingTop: 24,
+            fontSize: 13,
+            color: 'rgba(255,255,255,0.3)',
           }}
         >
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="flex items-center gap-2 font-inter transition-colors duration-200 hover:text-white"
-            style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}
-          >
-            <ArrowLeft size={16} />
-            Terug naar Dashboard
-          </button>
-          <span
-            className="font-inter"
-            style={{ fontSize: 12, color: 'rgba(255,255,255,0.2)' }}
-          >
-            Dagbesteding EmotieCheck v1.0
-          </span>
+          Dagbesteding EmotieCheck v1.0
         </div>
-      </main>
+      </div>
     </div>
   );
 }
