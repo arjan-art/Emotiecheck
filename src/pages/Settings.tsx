@@ -12,7 +12,6 @@ import {
 import { trpc } from '@/providers/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 
 /* ------------------------------------------------------------------ */
@@ -107,10 +106,9 @@ export default function SettingsPage() {
   });
 
   /* ---- Local state ---- */
-  const [phone, setPhone] = useState('');
-  const [phoneError, setPhoneError] = useState('');
+  const [email, setEmail] = useState('');
+  const [emailError, setEmailError] = useState('');
   const [apiKey, setApiKey] = useState('');
-  const [template, setTemplate] = useState('');
   const [enabled, setEnabled] = useState(false);
 
   const [participants, setParticipants] = useState<Participant[]>([
@@ -120,54 +118,52 @@ export default function SettingsPage() {
   ]);
   const [newName, setNewName] = useState('');
 
-  const emotionsQuery = trpc.emotion.listToday.useQuery();
-
   /* ---- Load from API ---- */
   useEffect(() => {
     if (configQuery.data) {
-      setPhone(configQuery.data.phoneNumber);
+      setEmail(configQuery.data.phoneNumber);
       setApiKey(configQuery.data.apiKey);
       setEnabled(configQuery.data.enabled);
     }
   }, [configQuery.data]);
 
   /* ---- Validation ---- */
-  const handlePhoneChange = (value: string) => {
-    setPhone(value);
-    if (phoneError) setPhoneError('');
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    if (emailError) setEmailError('');
   };
 
-  const handlePhoneBlur = () => {
-    if (phone && !isValidEmail(phone)) {
-      setPhoneError('Voer een geldig emailadres in.');
+  const handleEmailBlur = () => {
+    if (email && !isValidEmail(email)) {
+      setEmailError('Voer een geldig emailadres in.');
     } else {
-      setPhoneError('');
+      setEmailError('');
     }
   };
 
   /* ---- Actions ---- */
   const handleSave = () => {
-    if (phone && !isValidEmail(phone)) {
-      setPhoneError('Voer een geldig emailadres in.');
+    if (email && !isValidEmail(email)) {
+      setEmailError('Voer een geldig emailadres in.');
       return;
     }
     updateConfig.mutate({
-      phoneNumber: phone,
+      phoneNumber: email,
       apiKey: apiKey,
       enabled: enabled,
     });
   };
 
   const handleTest = () => {
-    if (!phone) {
+    if (!email) {
       toast.error('Vul eerst een emailadres in.');
       return;
     }
-    if (!isValidEmail(phone)) {
-      setPhoneError('Voer een geldig emailadres in.');
+    if (!isValidEmail(email)) {
+      setEmailError('Voer een geldig emailadres in.');
       return;
     }
-    sendTest.mutate({ phoneNumber: phone });
+    sendTest.mutate({ phoneNumber: email });
   };
 
   const handleAddParticipant = () => {
@@ -352,22 +348,22 @@ export default function SettingsPage() {
                 <Input
                   type="email"
                   placeholder="naam@deterugwinning.nl"
-                  value={phone}
-                  onChange={(e) => handlePhoneChange(e.target.value)}
-                  onBlur={handlePhoneBlur}
+                  value={email}
+                  onChange={(e) => handleEmailChange(e.target.value)}
+                  onBlur={handleEmailBlur}
                   className="w-full"
                   style={{
-                    ...(phoneError ? inputErrorStyle : inputBaseStyle),
+                    ...(emailError ? inputErrorStyle : inputBaseStyle),
                     padding: '16px 16px 16px 44px',
                   }}
                 />
               </div>
-              {phoneError && (
+              {emailError && (
                 <p
                   className="mt-2 font-inter"
                   style={{ fontSize: 13, color: '#E74C3C' }}
                 >
-                  {phoneError}
+                  {emailError}
                 </p>
               )}
             </div>
@@ -428,7 +424,7 @@ export default function SettingsPage() {
                 className="rounded-full border-green-600 text-green-400 hover:bg-green-900/20"
                 style={{ padding: '12px 24px' }}
               >
-                Testbericht versturen
+                Testemail versturen
               </Button>
               <Button
                 onClick={handleSave}
