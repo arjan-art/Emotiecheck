@@ -36,9 +36,15 @@
 
   * {
     @apply border-border;
-  }html, body, #root
+}
 
-  body {
+html, body, #root {
+    overflow-y: auto !important;
+    overflow-x: hidden;
+    min-height: 100dvh;
+}
+
+body {
     background-color: #F5F1ED;
     font-family: 'Inter', sans-serif;
     -webkit-font-smoothing: antialiased;
