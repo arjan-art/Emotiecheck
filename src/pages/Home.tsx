@@ -115,7 +115,7 @@ export default function Home() {
     <div className="relative flex min-h-[100dvh] flex-col items-center justify-center overflow-y-auto px-4 py-8">
       {/* STEP 1: SELECT NAME */}
       {appState === 'select-name' && (
-        <div className="flex w-full max-w-[640px] flex-col items-center">
+        <div className="flex w-full max-w-[640px] flex-col items-center py-8">
           <h1
             ref={headingRef}
             className="cursor-default select-none text-center font-poppins font-bold"
