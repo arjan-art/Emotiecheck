@@ -85,7 +85,7 @@ export async function sendTestEmail(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "EmotieCheck <melding@emotiecheck.app>",
+        from: "EmotieCheck <onboarding@resend.dev>",
         to: [toEmail],
         subject: "✅ EmotieCheck - Testmelding",
         html: `<h2>✅ Test geslaagd!</h2><p>Je email meldingen voor EmotieCheck werken correct.</p>`,
