@@ -36,19 +36,24 @@
 
   * {
     @apply border-border;
-}
+  }
 
-html, body, #root {
-    overflow-y: auto !important;
-    overflow-x: hidden;
-    min-height: 100dvh;
-}
-
-body {
+  body {
     background-color: #F5F1ED;
     font-family: 'Inter', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Hide scrollbar for tablet experience */
+  ::-webkit-scrollbar {
+    display: none;
+  }
+
+  html {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
 }
 
 /* Reduced motion support */
