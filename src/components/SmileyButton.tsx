@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 
 interface SmileyButtonProps {
@@ -7,68 +7,40 @@ interface SmileyButtonProps {
   label: string;
   color: string;
   onClick: () => void;
-  isVisible: boolean;
-  index: number;
+  isVisible?: boolean;
 }
 
 export default function SmileyButton({
+  emotion,
   emoji,
   label,
   color,
   onClick,
-  isVisible,
-  index,
+  isVisible = true,
 }: SmileyButtonProps) {
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const timelineRef = useRef<gsap.core.Timeline | null>(null);
 
-  // Entrance animation
   useEffect(() => {
-    if (!buttonRef.current) return;
-
-    if (isVisible) {
-      // Reset initial state
-      gsap.set(buttonRef.current, {
-        opacity: isVisible ? 1 : 0,
-        y: 30,
-        scale: 0.9,
-      });
-
-      // Entrance animation with stagger delay
-      const tl = gsap.timeline({ delay: 0.8 + index * 0.15 });
-      tl.to(buttonRef.current, {
-        opacity: 1,
-        y: 0,
-        scale: 1,
-        duration: 0.6,
-        ease: 'elastic.out(1, 0.5)',
-      });
-      timelineRef.current = tl;
-    } else {
-      // Exit animation
-      if (timelineRef.current) {
-        timelineRef.current.kill();
-      }
-      gsap.to(buttonRef.current, {
-        opacity: isVisible ? 1 : 0,
-        scale: 0.8,
-        duration: 0.4,
-        ease: 'power2.out',
-      });
+    if (buttonRef.current && isVisible) {
+      gsap.fromTo(
+        buttonRef.current,
+        { opacity: 0, y: 30, scale: 0.9 },
+        {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.6,
+          ease: 'elastic.out(1, 0.5)',
+        }
+      );
     }
-
-    return () => {
-      if (timelineRef.current) {
-        timelineRef.current.kill();
-      }
-    };
-  }, [isVisible, index]);
+  }, [isVisible]);
 
   return (
     <button
       ref={buttonRef}
       onClick={onClick}
-      className="flex flex-col items-center justify-center rounded-full bg-white font-inter transition-shadow duration-300 focus:outline-none focus-visible:ring-4 focus-visible:ring-offset-2"
+      className="flex flex-col items-center justify-center rounded-full bg-white transition-all duration-200 hover:-translate-y-1 active:translate-y-0.5 active:scale-[0.97]"
       style={{
         width: 'clamp(160px, 25vw, 200px)',
         height: 'clamp(160px, 25vw, 200px)',
@@ -77,22 +49,6 @@ export default function SmileyButton({
         opacity: isVisible ? 1 : 0,
         cursor: 'pointer',
       }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'translateY(-4px)';
-        e.currentTarget.style.boxShadow = '0 16px 48px rgba(0,0,0,0.12)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = 'translateY(0)';
-        e.currentTarget.style.boxShadow = '0 8px 32px rgba(0,0,0,0.08)';
-      }}
-      onMouseDown={(e) => {
-        e.currentTarget.style.transform = 'translateY(2px) scale(0.97)';
-      }}
-      onMouseUp={(e) => {
-        e.currentTarget.style.transform = 'translateY(-4px)';
-      }}
-      aria-label={label}
-      type="button"
     >
       <span
         className="select-none"
@@ -100,19 +56,14 @@ export default function SmileyButton({
           fontSize: 'clamp(64px, 8vw, 96px)',
           lineHeight: 1,
         }}
-        role="img"
-        aria-hidden="true"
       >
         {emoji}
       </span>
       <span
-        className="mt-3 text-center font-inter font-semibold select-none"
+        className="mt-3 select-none text-center font-inter font-medium"
         style={{
-          fontSize: 'clamp(13px, 1.5vw, 15px)',
-          color,
-          letterSpacing: '0.04em',
-          maxWidth: '80%',
-          lineHeight: 1.3,
+          fontSize: 'clamp(14px, 2vw, 18px)',
+          color: '#0B193D',
         }}
       >
         {label}
