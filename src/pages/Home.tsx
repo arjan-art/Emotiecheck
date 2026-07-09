@@ -165,7 +165,7 @@ export default function Home() {
 
       {/* STEP 2: SELECT EMOTION */}
       {appState === 'checkin' && (
-        <div className="flex w-full max-w-[720px] flex-col items-center">
+        <div className="flex w-full max-w-[720px] flex-col items-center py-8">
           <button
             onClick={handleBackToNameSelection}
             className="mb-6 font-inter transition-colors hover:text-[#0B193D]"
@@ -199,6 +199,7 @@ export default function Home() {
                 label={e.label}
                 color={e.color}
                 onClick={() => handleEmotionSelect(e.emotion)}
+                isVisible={true}
               />
             ))}
           </div>
