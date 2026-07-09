@@ -49,18 +49,6 @@ body {
     font-family: 'Inter', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    overflow: hidden;
-  }
-
-  /* Hide scrollbar for tablet experience */
-  ::-webkit-scrollbar {
-    display: none;
-  }
-
-  html {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
 }
 
 /* Reduced motion support */
