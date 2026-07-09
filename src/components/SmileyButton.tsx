@@ -74,7 +74,7 @@ export default function SmileyButton({
         height: 'clamp(160px, 25vw, 200px)',
         border: `4px solid ${color}`,
         boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
-        opacity: 0,
+        opacity: isVisible ? 1 : 0,
         cursor: 'pointer',
       }}
       onMouseEnter={(e) => {
