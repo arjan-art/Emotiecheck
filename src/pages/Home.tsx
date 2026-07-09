@@ -105,7 +105,6 @@ export default function Home() {
   return (
     <div
       style={{
-        minHeight: '100dvh',
         background: '#F5F1ED',
         fontFamily: 'Inter, sans-serif',
         overflowY: 'auto',
