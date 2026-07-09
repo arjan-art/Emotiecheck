@@ -9,7 +9,7 @@ interface LayoutProps {
 
 export default function Layout({ children, showBlobBackground = true }: LayoutProps) {
   return (
-    <div className="relative min-h-[100dvh] w-full overflow-hidden">
+    <div className="relative min-h-[100dvh] w-full" style={{ overflowY: 'auto' }}>
       {/* Three.js blob background — behind everything */}
       {showBlobBackground && <BlobBackground />}
 
