@@ -36,7 +36,7 @@
 
   * {
     @apply border-border;
-  }
+  }html, body, #root
 
   body {
     background-color: #F5F1ED;
