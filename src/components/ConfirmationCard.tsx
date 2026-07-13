@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import gsap from 'gsap';
-import { MessageCircle } from 'lucide-react';
+import { Mail } from 'lucide-react';
 
 interface ConfirmationCardProps {
   emotion: 'groen' | 'oranje' | 'rood';
@@ -25,7 +25,7 @@ const emotionConfig = {
     emoji: '😢',
     color: '#E74C3C',
     heading: 'Dank je wel dat je het hebt doorgegeven.',
-    body: 'We hebben een bericht gestuurd naar de zorgmedewerker. Iemand komt zo snel mogelijk naar je toe.',
+    body: 'We hebben een email gestuurd naar de zorgmedewerker. Iemand komt zo snel mogelijk naar je toe.',
   },
 };
 
@@ -54,7 +54,7 @@ export default function ConfirmationCard({ emotion, onReset, timeLeft }: Confirm
       }
     );
 
-    // Show WhatsApp banner after delay (Rood only)
+    // Show Email banner after delay (Rood only)
     if (emotion === 'rood') {
       const timer = setTimeout(() => {
         setShowBanner(true);
@@ -188,7 +188,7 @@ export default function ConfirmationCard({ emotion, onReset, timeLeft }: Confirm
           {config.body}
         </p>
 
-        {/* WhatsApp Alert Banner (Rood only) */}
+        {/* Email Alert Banner (Rood only) */}
         {emotion === 'rood' && showBanner && (
           <div
             className="mt-8 flex items-center gap-4"
@@ -200,7 +200,7 @@ export default function ConfirmationCard({ emotion, onReset, timeLeft }: Confirm
               animation: 'fadeSlideIn 0.5s ease-out',
             }}
           >
-            <MessageCircle
+            <Mail
               size={28}
               color="#27AE60"
               className="shrink-0"
@@ -217,7 +217,7 @@ export default function ConfirmationCard({ emotion, onReset, timeLeft }: Confirm
                 letterSpacing: '0.04em',
               }}
             >
-              WhatsApp-bericht verstuurd naar zorgmedewerker
+              Email-melding verstuurd naar zorgmedewerker
             </span>
           </div>
         )}
