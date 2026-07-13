@@ -48,7 +48,7 @@ export async function sendEmailNotification(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "EmotieCheck <melding@emotiecheck.app>",
+        from: "EmotieCheck <onboarding@resend.dev>",
         to: [toEmail],
         subject: subject,
         html: htmlBody,
