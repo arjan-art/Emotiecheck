@@ -3,7 +3,7 @@ services:
     name: emotiecheck
     runtime: node
     plan: free
-    buildCommand: rm -rf node_modules && npm install --include=dev && npm run build
+    buildCommand: rm -rf node_modules && npm cache clean --force && rm -f package-lock.json && npm install --include=dev && npm run build
     startCommand: npm start
     envVars:
       - key: NODE_VERSION
