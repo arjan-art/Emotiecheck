@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import gsap from 'gsap';
 import { trpc } from '@/providers/trpc';
 import SmileyButton from '@/components/SmileyButton';
@@ -14,6 +14,105 @@ const emotions = [
   { emotion: 'oranje' as EmotionType, emoji: '\uD83D\uDE10', label: 'Het gaat wel', color: '#F39C12' },
   { emotion: 'rood' as EmotionType, emoji: '\uD83D\uDE22', label: 'Ik voel me niet goed', color: '#E74C3C' },
 ];
+
+/* ------------------------------------------------------------------ */
+/*  NameSelector — searchable list with large touch targets            */
+/* ------------------------------------------------------------------ */
+
+interface NameSelectorProps {
+  participants: Array<{ id: number; name: string }>;
+  onSelect: (name: string) => void;
+}
+
+function NameSelector({ participants, onSelect }: NameSelectorProps) {
+  const [search, setSearch] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return participants;
+    const q = search.toLowerCase();
+    return participants.filter((p) => p.name.toLowerCase().includes(q));
+  }, [participants, search]);
+
+  return (
+    <div style={{ width: '100%', maxWidth: 420 }}>
+      {/* Search input */}
+      <input
+        ref={inputRef}
+        type="text"
+        placeholder="Typ om te zoeken..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        style={{
+          width: '100%',
+          height: 56,
+          fontSize: 18,
+          borderRadius: 16,
+          border: '2px solid #E6EDE8',
+          background: '#FFFFFF',
+          color: '#0B193D',
+          padding: '0 20px',
+          marginBottom: 16,
+          outline: 'none',
+          fontFamily: 'Inter, sans-serif',
+        }}
+      />
+
+      {/* Name list */}
+      <div
+        style={{
+          maxHeight: 360,
+          overflowY: 'auto',
+          borderRadius: 16,
+          border: '2px solid #E6EDE8',
+          background: '#FFFFFF',
+        }}
+      >
+        {filtered.length === 0 ? (
+          <p style={{ padding: '20px', textAlign: 'center', color: '#29445A', fontSize: 16 }}>
+            Geen namen gevonden.
+          </p>
+        ) : (
+          filtered.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => onSelect(p.name)}
+              style={{
+                display: 'block',
+                width: '100%',
+                padding: '16px 20px',
+                fontSize: 18,
+                fontFamily: 'Inter, sans-serif',
+                textAlign: 'left',
+                background: '#FFFFFF',
+                border: 'none',
+                borderBottom: '1px solid #F0F0F0',
+                color: '#0B193D',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#E6EDE8';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#FFFFFF';
+              }}
+            >
+              {p.name}
+            </button>
+          ))
+        )}
+      </div>
+
+      <p style={{ textAlign: 'center', marginTop: 12, fontSize: 13, color: '#29445A' }}>
+        {filtered.length} van {participants.length} namen
+      </p>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Home Page                                                          */
+/* ------------------------------------------------------------------ */
 
 export default function Home() {
   const [appState, setAppState] = useState<AppState>('select-name');
@@ -90,7 +189,7 @@ export default function Home() {
             Wie ben je?
           </h1>
           <p style={{ fontSize: 18, color: '#29445A', textAlign: 'center', marginTop: 12, marginBottom: 32 }}>
-            Kies je naam uit de lijst.
+            Zoek je naam en klik erop.
           </p>
 
           {participantsQuery.isLoading ? (
@@ -100,36 +199,7 @@ export default function Home() {
               Nog geen deelnemers toegevoegd.
             </p>
           ) : (
-            <select
-              defaultValue=""
-              onChange={(e) => { if (e.target.value) handleNameSelect(e.target.value); }}
-              style={{
-                width: '100%',
-                maxWidth: 400,
-                height: 56,
-                fontSize: 18,
-                borderRadius: 16,
-                border: '2px solid #E6EDE8',
-                background: '#FFFFFF',
-                color: '#0B193D',
-                padding: '0 20px',
-                cursor: 'pointer',
-                appearance: 'none',
-                WebkitAppearance: 'none',
-                MozAppearance: 'none',
-                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%230B193D' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
-                backgroundRepeat: 'no-repeat',
-                backgroundPosition: 'right 16px center',
-                backgroundSize: 20,
-              }}
-            >
-              <option value="" disabled>Kies je naam...</option>
-              {participants.map((p) => (
-                <option key={p.id} value={p.name} style={{ fontSize: 16, padding: '12px 16px' }}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+            <NameSelector participants={participants} onSelect={handleNameSelect} />
           )}
         </div>
       )}

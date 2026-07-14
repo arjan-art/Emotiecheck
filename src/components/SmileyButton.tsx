@@ -7,8 +7,6 @@ interface SmileyButtonProps {
   label: string;
   color: string;
   onClick: () => void;
-  isVisible: boolean;
-  index: number;
 }
 
 export default function SmileyButton({
@@ -16,53 +14,25 @@ export default function SmileyButton({
   label,
   color,
   onClick,
-  isVisible,
-  index,
 }: SmileyButtonProps) {
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const timelineRef = useRef<gsap.core.Timeline | null>(null);
 
-  // Entrance animation
   useEffect(() => {
     if (!buttonRef.current) return;
 
-    if (isVisible) {
-      // Reset initial state
-      gsap.set(buttonRef.current, {
-        opacity: 0,
-        y: 30,
-        scale: 0.9,
-      });
-
-      // Entrance animation with stagger delay
-      const tl = gsap.timeline({ delay: 0.8 + index * 0.15 });
-      tl.to(buttonRef.current, {
+    gsap.fromTo(
+      buttonRef.current,
+      { opacity: 0, y: 30, scale: 0.9 },
+      {
         opacity: 1,
         y: 0,
         scale: 1,
         duration: 0.6,
         ease: 'elastic.out(1, 0.5)',
-      });
-      timelineRef.current = tl;
-    } else {
-      // Exit animation
-      if (timelineRef.current) {
-        timelineRef.current.kill();
+        delay: 0.3,
       }
-      gsap.to(buttonRef.current, {
-        opacity: 0,
-        scale: 0.8,
-        duration: 0.4,
-        ease: 'power2.out',
-      });
-    }
-
-    return () => {
-      if (timelineRef.current) {
-        timelineRef.current.kill();
-      }
-    };
-  }, [isVisible, index]);
+    );
+  }, []);
 
   return (
     <button
@@ -74,7 +44,6 @@ export default function SmileyButton({
         height: 'clamp(160px, 25vw, 200px)',
         border: `4px solid ${color}`,
         boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
-        opacity: isVisible ? 1 : 0,
         cursor: 'pointer',
       }}
       onMouseEnter={(e) => {

@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router';
 import {
   Activity,
   AlertTriangle,
@@ -514,7 +515,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-[100dvh] bg-[#0B193D]">
       {/* Navigation */}
-      <DashboardNav noLinks />
+      <DashboardNav />
 
       {/* Main content */}
       <div
