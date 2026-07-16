@@ -78,11 +78,21 @@ const isEmotion = (e: string): e is EmotionType =>
 
 function formatTime(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date;
-  return format(d, 'HH:mm');
+  return d.toLocaleTimeString('nl-NL', {
+    timeZone: 'Europe/Amsterdam',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
 }
 
 function formatDateNL(date: Date): string {
-  return format(date, 'd MMMM yyyy', { locale: nl });
+  return date.toLocaleDateString('nl-NL', {
+    timeZone: 'Europe/Amsterdam',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
 }
 
 function participantNameDisplay(name: string | null | undefined): string {
