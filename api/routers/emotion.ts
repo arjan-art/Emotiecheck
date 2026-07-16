@@ -6,6 +6,17 @@ import { eq, and, gte, desc } from "drizzle-orm";
 import { sendEmailNotification } from "../lib/email";
 import { getSetting } from "./whatsapp";
 
+/* Get start of today in Europe/Amsterdam timezone */
+function getTodayAmsterdam(): Date {
+  const now = new Date();
+  // Format as YYYY-MM-DD in Amsterdam timezone
+  const amsterdamDate = now.toLocaleDateString('en-CA', {
+    timeZone: 'Europe/Amsterdam',
+  }); // gives "2026-07-14"
+  // Return start of that day in UTC
+  return new Date(amsterdamDate + 'T00:00:00+02:00');
+}
+
 export const emotionRouter = createRouter({
   create: publicQuery
     .input(
@@ -58,8 +69,7 @@ export const emotionRouter = createRouter({
   listToday: publicQuery.query(async () => {
     const db = getDb();
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = getTodayAmsterdam();
 
     const todaysEmotions = await db
       .select()
@@ -80,8 +90,7 @@ export const emotionRouter = createRouter({
   getStats: publicQuery.query(async () => {
     const db = getDb();
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = getTodayAmsterdam();
 
     const todaysEmotions = await db
       .select()
@@ -130,8 +139,7 @@ export const emotionRouter = createRouter({
   getActiveAlerts: publicQuery.query(async () => {
     const db = getDb();
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = getTodayAmsterdam();
 
     return db
       .select()
